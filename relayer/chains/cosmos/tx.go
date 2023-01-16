@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/tx"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
@@ -83,7 +81,8 @@ func (cc *CosmosProvider) SendMessages(ctx context.Context, msgs []provider.Rela
 	defer cc.txMu.Unlock()
 
 	if err := retry.Do(func() error {
-		txBytes, sequence, f, err := cc.buildMessages(ctx, msgs, memo)
+		cMsgs := CosmosMsgs(msgs...)
+		txBytes, sequence, f, err := cc.BuildTx(ctx, cMsgs, memo, 0)
 		fees = f
 		if err != nil {
 			errMsg := err.Error()
@@ -228,73 +227,6 @@ func parseEventsFromTxResponse(resp *sdk.TxResponse) []provider.RelayerEvent {
 		}
 	}
 	return events
-}
-
-func (cc *CosmosProvider) buildMessages(ctx context.Context, msgs []provider.RelayerMessage, memo string) ([]byte, uint64, sdk.Coins, error) {
-	// Query account details
-	txf, err := cc.PrepareFactory(cc.TxFactory())
-	if err != nil {
-		return nil, 0, sdk.Coins{}, err
-	}
-
-	if memo != "" {
-		txf = txf.WithMemo(memo)
-	}
-
-	// TODO: Make this work with new CalculateGas method
-	// TODO: This is related to GRPC client stuff?
-	// https://github.com/cosmos/cosmos-sdk/blob/5725659684fc93790a63981c653feee33ecf3225/client/tx/tx.go#L297
-	// If users pass gas adjustment, then calculate gas
-	_, adjusted, err := cc.CalculateGas(ctx, txf, CosmosMsgs(msgs...)...)
-	if err != nil {
-		return nil, 0, sdk.Coins{}, err
-	}
-
-	// Set the gas amount on the transaction factory
-	txf = txf.WithGas(adjusted)
-
-	var txb client.TxBuilder
-	// Build the transaction builder & retry on failures
-	if err := retry.Do(func() error {
-		txb, err = txf.BuildUnsignedTx(CosmosMsgs(msgs...)...)
-		if err != nil {
-			return err
-		}
-		return nil
-	}, retry.Context(ctx), rtyAtt, rtyDel, rtyErr); err != nil {
-		return nil, 0, sdk.Coins{}, err
-	}
-
-	done := cc.SetSDKContext()
-
-	if err := retry.Do(func() error {
-		if err := tx.Sign(txf, cc.PCfg.Key, txb, false); err != nil {
-			return err
-		}
-		return nil
-	}, retry.Context(ctx), rtyAtt, rtyDel, rtyErr); err != nil {
-		return nil, 0, sdk.Coins{}, err
-	}
-
-	done()
-
-	tx := txb.GetTx()
-	fees := tx.GetFee()
-
-	var txBytes []byte
-	// Generate the transaction bytes
-	if err := retry.Do(func() error {
-		var err error
-		txBytes, err = cc.Codec.TxConfig.TxEncoder()(tx)
-		if err != nil {
-			return err
-		}
-		return nil
-	}, retry.Context(ctx), rtyAtt, rtyDel, rtyErr); err != nil {
-		return nil, 0, sdk.Coins{}, err
-	}
-
-	return txBytes, txf.Sequence(), fees, nil
 }
 
 // handleAccountSequenceMismatchError will parse the error string, e.g.:

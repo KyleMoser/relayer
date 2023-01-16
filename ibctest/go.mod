@@ -233,3 +233,5 @@ replace (
 
 	github.com/vedhavyas/go-subkey => github.com/strangelove-ventures/go-subkey v1.0.7
 )
+
+replace github.com/strangelove-ventures/lens => /home/kyle/projects/Strangelove/lens
