@@ -41,6 +41,9 @@ type CosmosProviderConfig struct {
 	OutputFormat   string   `json:"output-format" yaml:"output-format"`
 	SignModeStr    string   `json:"sign-mode" yaml:"sign-mode"`
 	ExtraCodecs    []string `json:"extra-codecs" yaml:"extra-codecs"`
+
+	//If FeeGrantConfiguration is set, TXs submitted by the ChainClient will be signed by the FeeGrantees in a round-robin fashion by default.
+	FeeGrants *lens.FeeGrantConfiguration `json:"feegrants" yaml:"feegrants"`
 }
 
 func (pc CosmosProviderConfig) Validate() error {
@@ -92,6 +95,7 @@ func ChainClientConfig(pcfg *CosmosProviderConfig) *lens.ChainClientConfig {
 		SignModeStr:    pcfg.SignModeStr,
 		ExtraCodecs:    pcfg.ExtraCodecs,
 		Modules:        append([]module.AppModuleBasic{}, lens.ModuleBasics...),
+		FeeGrants:      pcfg.FeeGrants,
 	}
 }
 
