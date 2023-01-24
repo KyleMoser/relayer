@@ -24,6 +24,10 @@ const (
 	xIcon = "✘"
 )
 
+const (
+	flagFeeGrant = "feegrant"
+)
+
 func chainsCmd(a *appState) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "chains",
@@ -301,27 +305,32 @@ func chainsAddCmd(a *appState) *cobra.Command {
 				return fmt.Errorf("config not initialized, consider running `rly config init`")
 			}
 
+			useFeegrant, err := cmd.Flags().GetBool(flagFeeGrant)
+			if err != nil {
+				return err
+			}
+
+			chainName := ""
+			if len(args) == 0 {
+				chainName = strings.Split(filepath.Base(file), ".")[0]
+			} else if len(args) == 1 {
+				chainName = args[0]
+			}
+
 			// default behavior fetch from chain registry
 			// still allow for adding config from url or file
 			switch {
 			case file != "":
-				var chainName string
-				switch len(args) {
-				case 0:
-					chainName = strings.Split(filepath.Base(file), ".")[0]
-				case 1:
-					chainName = args[0]
-				default:
+				if chainName == "" {
 					return errors.New("one chain name is required")
-				}
-				if err := addChainFromFile(a, chainName, file); err != nil {
+				} else if err := addChainFromFile(a, chainName, file); err != nil {
 					return err
 				}
 			case url != "":
 				if len(args) != 1 {
 					return errors.New("one chain name is required")
 				}
-				if err := addChainFromURL(a, args[0], url); err != nil {
+				if err := addChainFromURL(a, chainName, url); err != nil {
 					return err
 				}
 			default:
@@ -334,10 +343,37 @@ func chainsAddCmd(a *appState) *cobra.Command {
 				return err
 			}
 
+			cosmosChain, ok := a.Config.Chains[chainName]
+			if !ok {
+				return errChainNotFound(chainName)
+			}
+
+			//We only attempt to feegrant cosmos chains, but throw no errors for others
+			if useFeegrant {
+				prov, ok := cosmosChain.ChainProvider.(*cosmos.CosmosProvider)
+
+				//If already feegranted, do nothing (likely impossible, the chain is new)
+				if ok && prov.PCfg.FeeGrants == nil {
+					feegrantErr := prov.ConfigureFeegrants(10, prov.PCfg.Key)
+
+					//This is an unfortunate side-effect of the CosmosProviderConfig being separate from the Lens ChainClientConfig.
+					//You MUST set the feegrant config on PCfg or it will not be written to the relayer's config on disk.
+					prov.PCfg.FeeGrants = prov.Config.FeeGrants
+
+					if feegrantErr != nil {
+						return feegrantErr
+					}
+
+					cfgErr := a.OverwriteConfig(a.Config)
+					cobra.CheckErr(cfgErr)
+				}
+			}
+
 			return a.OverwriteConfig(a.Config)
 		},
 	}
 
+	cmd.Flags().Bool(flagFeeGrant, true, "use fee grants and rotating signing keys")
 	return chainsAddFlags(a.Viper, cmd)
 }
 
