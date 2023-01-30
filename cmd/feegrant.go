@@ -29,8 +29,9 @@ func feegrantConfigureBaseCmd(a *appState) *cobra.Command {
 func feegrantConfigureBasicCmd(a *appState) *cobra.Command {
 	var numGrantees int
 	var update bool
+	var updateGrantees bool
 	cmd := &cobra.Command{
-		Use:   "basicallowance [chain-name] [granter] --grantees [int] --update-granter",
+		Use:   "basicallowance [chain-name] [granter] --grantees [int] --overwrite-granter --overwrite-grantees",
 		Short: "feegrants for the given chain and granter (if granter is unspecified, use the default key)",
 		Long:  "feegrants for the given chain. 10 grantees by default, all with an unrestricted BasicAllowance.",
 		Args:  cobra.MinimumNArgs(1),
@@ -69,7 +70,7 @@ func feegrantConfigureBasicCmd(a *appState) *cobra.Command {
 				cobra.CheckErr(cfgErr)
 			}
 
-			if prov.PCfg.FeeGrants == nil {
+			if prov.PCfg.FeeGrants == nil || updateGrantees {
 				feegrantErr := prov.ConfigureFeegrants(numGrantees, granterKey)
 
 				//This is an unfortunate side-effect of the CosmosProviderConfig being separate from the Lens ChainClientConfig.
@@ -106,7 +107,8 @@ func feegrantConfigureBasicCmd(a *appState) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&update, "update-granter", false, "if a granter is configured and you want to change the granter key")
+	cmd.Flags().BoolVar(&update, "overwrite-granter", false, "if a granter is configured and you want to change the granter key")
+	cmd.Flags().BoolVar(&updateGrantees, "overwrite-grantees", false, "overwrite all grantees")
 	cmd.Flags().IntVar(&numGrantees, "grantees", 10, "number of grantees that will be feegranted with basic allowances")
 	memoFlag(a.Viper, cmd)
 	return cmd

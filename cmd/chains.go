@@ -352,7 +352,7 @@ func chainsAddCmd(a *appState) *cobra.Command {
 			if useFeegrant {
 				prov, ok := cosmosChain.ChainProvider.(*cosmos.CosmosProvider)
 
-				//If already feegranted, do nothing (likely impossible, the chain is new)
+				//If already feegranted, do nothing
 				if ok && prov.PCfg.FeeGrants == nil {
 					feegrantErr := prov.ConfigureFeegrants(10, prov.PCfg.Key)
 
