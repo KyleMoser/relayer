@@ -30,8 +30,10 @@ func feegrantConfigureBasicCmd(a *appState) *cobra.Command {
 	var numGrantees int
 	var update bool
 	var updateGrantees bool
+	var grantees []string
+
 	cmd := &cobra.Command{
-		Use:   "basicallowance [chain-name] [granter] --grantees [int] --overwrite-granter --overwrite-grantees",
+		Use:   "basicallowance [chain-name] [granter] --num-grantees [int] --overwrite-granter --overwrite-grantees",
 		Short: "feegrants for the given chain and granter (if granter is unspecified, use the default key)",
 		Long:  "feegrants for the given chain. 10 grantees by default, all with an unrestricted BasicAllowance.",
 		Args:  cobra.MinimumNArgs(1),
@@ -63,15 +65,26 @@ func feegrantConfigureBasicCmd(a *appState) *cobra.Command {
 			}
 
 			if prov.PCfg.FeeGrants != nil && granterKey != prov.PCfg.FeeGrants.GranterKey && !update {
-				return fmt.Errorf("you specified granter '%s' which is different than configured feegranter '%s', but you did not specify the --update flag", granterKeyOrAddr, prov.PCfg.FeeGrants.GranterKey)
+				return fmt.Errorf("you specified granter '%s' which is different than configured feegranter '%s', but you did not specify the --overwrite-granter flag", granterKeyOrAddr, prov.PCfg.FeeGrants.GranterKey)
 			} else if prov.PCfg.FeeGrants != nil && granterKey != prov.PCfg.FeeGrants.GranterKey && update {
 				prov.PCfg.FeeGrants.GranterKey = granterKey
 				cfgErr := a.OverwriteConfig(a.Config)
 				cobra.CheckErr(cfgErr)
 			}
 
-			if prov.PCfg.FeeGrants == nil || updateGrantees {
-				feegrantErr := prov.ConfigureFeegrants(numGrantees, granterKey)
+			if prov.PCfg.FeeGrants == nil || updateGrantees || len(grantees) > 0 {
+				var feegrantErr error
+
+				//No list of grantees was provided, so we will use the default naming convention "grantee1, ... granteeN"
+				if grantees == nil {
+					feegrantErr = prov.ConfigureFeegrants(numGrantees, granterKey)
+				} else {
+					feegrantErr = prov.ConfigureWithGrantees(grantees, granterKey)
+				}
+
+				if feegrantErr != nil {
+					return feegrantErr
+				}
 
 				//This is an unfortunate side-effect of the CosmosProviderConfig being separate from the Lens ChainClientConfig.
 				//You MUST set the feegrant config on PCfg or it will not be written to the relayer's config on disk.
@@ -97,9 +110,11 @@ func feegrantConfigureBasicCmd(a *appState) *cobra.Command {
 			//Get latest height from the chain, mark feegrant configuration as verified up to that height.
 			//This means we've verified feegranting is enabled on-chain and TXs can be sent with a feegranter.
 			if prov.PCfg.FeeGrants != nil {
+				fmt.Printf("Querying latest chain height to mark FeeGrant height... \n")
 				h, err := prov.QueryLatestHeight(ctx)
 				cobra.CheckErr(err)
 				prov.PCfg.FeeGrants.BlockHeightVerified = h
+				fmt.Printf("Feegrant chain height marked: %d\n", h)
 				cfgErr := a.OverwriteConfig(a.Config)
 				cobra.CheckErr(cfgErr)
 			}
@@ -107,9 +122,12 @@ func feegrantConfigureBasicCmd(a *appState) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&update, "overwrite-granter", false, "if a granter is configured and you want to change the granter key")
-	cmd.Flags().BoolVar(&updateGrantees, "overwrite-grantees", false, "overwrite all grantees")
-	cmd.Flags().IntVar(&numGrantees, "grantees", 10, "number of grantees that will be feegranted with basic allowances")
+	cmd.Flags().BoolVar(&update, "overwrite-granter", false, "allow overwriting the existing granter")
+	cmd.Flags().BoolVar(&updateGrantees, "overwrite-grantees", false, "allow overwriting existing grantees")
+	cmd.Flags().IntVar(&numGrantees, "num-grantees", 10, "number of grantees that will be feegranted with basic allowances")
+	cmd.Flags().StringSliceVar(&grantees, "grantees", []string{}, "comma separated list of grantee key names (keys are created if they do not exist)")
+	cmd.MarkFlagsMutuallyExclusive("num-grantees", "grantees")
+
 	memoFlag(a.Viper, cmd)
 	return cmd
 }

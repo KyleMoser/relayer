@@ -305,10 +305,10 @@ func chainsAddCmd(a *appState) *cobra.Command {
 				return fmt.Errorf("config not initialized, consider running `rly config init`")
 			}
 
-			useFeegrant, err := cmd.Flags().GetBool(flagFeeGrant)
-			if err != nil {
-				return err
-			}
+			// useFeegrant, err := cmd.Flags().GetBool(flagFeeGrant)
+			// if err != nil {
+			// 	return err
+			// }
 
 			chainName := ""
 			if len(args) == 0 {
@@ -343,31 +343,31 @@ func chainsAddCmd(a *appState) *cobra.Command {
 				return err
 			}
 
-			cosmosChain, ok := a.Config.Chains[chainName]
-			if !ok {
-				return errChainNotFound(chainName)
-			}
+			// cosmosChain, ok := a.Config.Chains[chainName]
+			// if !ok {
+			// 	return errChainNotFound(chainName)
+			// }
 
 			//We only attempt to feegrant cosmos chains, but throw no errors for others
-			if useFeegrant {
-				prov, ok := cosmosChain.ChainProvider.(*cosmos.CosmosProvider)
+			// if useFeegrant {
+			// 	prov, ok := cosmosChain.ChainProvider.(*cosmos.CosmosProvider)
 
-				//If already feegranted, do nothing
-				if ok && prov.PCfg.FeeGrants == nil {
-					feegrantErr := prov.ConfigureFeegrants(10, prov.PCfg.Key)
+			// 	//If already feegranted, do nothing
+			// 	if ok && prov.PCfg.FeeGrants == nil {
+			// 		feegrantErr := prov.ConfigureFeegrants(10, prov.PCfg.Key)
 
-					//This is an unfortunate side-effect of the CosmosProviderConfig being separate from the Lens ChainClientConfig.
-					//You MUST set the feegrant config on PCfg or it will not be written to the relayer's config on disk.
-					prov.PCfg.FeeGrants = prov.Config.FeeGrants
+			// 		//This is an unfortunate side-effect of the CosmosProviderConfig being separate from the Lens ChainClientConfig.
+			// 		//You MUST set the feegrant config on PCfg or it will not be written to the relayer's config on disk.
+			// 		prov.PCfg.FeeGrants = prov.Config.FeeGrants
 
-					if feegrantErr != nil {
-						return feegrantErr
-					}
+			// 		if feegrantErr != nil {
+			// 			return feegrantErr
+			// 		}
 
-					cfgErr := a.OverwriteConfig(a.Config)
-					cobra.CheckErr(cfgErr)
-				}
-			}
+			// 		cfgErr := a.OverwriteConfig(a.Config)
+			// 		cobra.CheckErr(cfgErr)
+			// 	}
+			// }
 
 			return a.OverwriteConfig(a.Config)
 		},

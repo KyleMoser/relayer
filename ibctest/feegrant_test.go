@@ -2,6 +2,7 @@ package ibctest
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -10,11 +11,13 @@ import (
 	"github.com/cosmos/relayer/v2/relayer"
 	"github.com/cosmos/relayer/v2/relayer/processor"
 	ibctestv5 "github.com/strangelove-ventures/ibctest/v5"
+	ibcCosmos "github.com/strangelove-ventures/ibctest/v5/chain/cosmos"
 	"github.com/strangelove-ventures/ibctest/v5/ibc"
 	"github.com/strangelove-ventures/ibctest/v5/test"
 	"github.com/strangelove-ventures/ibctest/v5/testreporter"
 	"github.com/strangelove-ventures/lens/client"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/sync/errgroup"
 )
@@ -30,8 +33,8 @@ func TestScenarioFeegrantBasic(t *testing.T) {
 
 	// Chain Factory
 	cf := ibctestv5.NewBuiltinChainFactory(zaptest.NewLogger(t), []*ibctestv5.ChainSpec{
-		{Name: "gaia", Version: "v7.0.3", NumValidators: &nv, NumFullNodes: &nf},
-		{Name: "osmosis", Version: "v11.0.1", NumValidators: &nv, NumFullNodes: &nf},
+		{Name: "gaia", ChainName: "gaia", Version: "v7.0.3", NumValidators: &nv, NumFullNodes: &nf},
+		{Name: "osmosis", ChainName: "osmosis", Version: "v11.0.1", NumValidators: &nv, NumFullNodes: &nf},
 	})
 
 	chains, err := cf.Chains(t.Name())
@@ -90,39 +93,54 @@ func TestScenarioFeegrantBasic(t *testing.T) {
 
 	//Mnemonic from the juno repo test user
 	granterMnemonic := "clip hire initial neck maid actor venue client foam budget lock catalog sweet steak waste crater broccoli pipe steak sister coyote moment obvious choose"
+	gaiaGranteeMnemonic := "small extend spirit you oppose spoon curious rude oyster evil assault above hub glow pool elbow surround wreck announce fever feel danger blind label"
+	gaiaGranteeKey := "grantee1"
+
 	granterUsers := GetAndFundTestUsers(t, ctx, "default", granterMnemonic, int64(fundAmount), gaia, osmosis)
 	fundRecipientUsers := GetAndFundTestUsers(t, ctx, "recipient", "", int64(fundAmount), gaia, osmosis)
+	usersGrantees := GetAndFundTestUsers(t, ctx, gaiaGranteeKey, gaiaGranteeMnemonic, int64(granteeFundAmount), gaia)
+
 	gaiaGranterUser, osmosisGranterUser := granterUsers[0], granterUsers[1]
 	gaiaRecipient, osmosisRecipient := fundRecipientUsers[0], fundRecipientUsers[1]
-
-	usersGrantees := GetAndFundTestUsers(t, ctx, "grantee1", "", int64(granteeFundAmount), gaia)
 	gaiaGrantee := usersGrantees[0]
 
-	r.StartRelayer(ctx, eRep, ibcPath)
+	gaiaGranteeAddr := gaiaGrantee.Bech32Address(gaia.Config().Bech32Prefix)
+	gaiaGranterAddr := gaiaGranterUser.Bech32Address(gaia.Config().Bech32Prefix)
 	logger := zaptest.NewLogger(t)
 
-	//TODO: why is this necessary? How do we link chain config to RELAYER config?
+	logger.Debug("Key address", zap.String("gaia grantee", gaiaGranteeAddr), zap.String("gaia grantee key", gaiaGrantee.KeyName))
+	logger.Debug("Key address", zap.String("gaia granter", gaiaGranterAddr), zap.String("gaia granter key", gaiaGranterUser.KeyName))
+
+	//IBC chain config is unrelated to RELAYER config so this step is necessary
 	if err := r.RestoreKey(ctx,
 		eRep,
 		gaia.Config().ChainID, gaiaGranterUser.KeyName,
 		granterMnemonic,
 	); err != nil {
-		t.Fatalf("failed to restore key to relayer for chain %s: %s", gaia.Config().ChainID, err.Error())
+		t.Fatalf("failed to restore granter key to relayer for chain %s: %s", gaia.Config().ChainID, err.Error())
+	}
+
+	//IBC chain config is unrelated to RELAYER config so this step is necessary
+	if err := r.RestoreKey(ctx,
+		eRep,
+		gaia.Config().ChainID, gaiaGrantee.KeyName,
+		gaiaGranteeMnemonic,
+	); err != nil {
+		t.Fatalf("failed to restore granter key to relayer for chain %s: %s", gaia.Config().ChainID, err.Error())
 	}
 
 	localRelayer := r.(*Relayer)
-	res := localRelayer.sys().Run(logger, "chains", "configure", "feegrant", "basicallowance", gaia.Config().Name, gaiaGranterUser.KeyName, "--grantees", "10", "--overwrite-grantees")
+	res := localRelayer.sys().Run(logger, "chains", "configure", "feegrant", "basicallowance", gaia.Config().ChainID, gaiaGranterUser.KeyName, "--grantees", gaiaGranteeKey, "--overwrite-granter")
 	if res.Err != nil {
 		t.Fatalf("failed to rly config feegrants: %v", res.Err)
 	}
+
+	r.StartRelayer(ctx, eRep, ibcPath)
 
 	// Send Transaction
 	amountToSend := int64(1_000)
 	gaiaDstAddress := gaiaRecipient.Bech32Address(osmosis.Config().Bech32Prefix)
 	osmosisDstAddress := osmosisRecipient.Bech32Address(gaia.Config().Bech32Prefix)
-
-	gaiaGranteeAddr := gaiaGrantee.Bech32Address(gaia.Config().Bech32Prefix)
-	gaiaGranterAddr := gaiaGranterUser.Bech32Address(gaia.Config().Bech32Prefix)
 
 	gaiaHeight, err := gaia.Height(ctx)
 	require.NoError(t, err)
@@ -146,7 +164,23 @@ func TestScenarioFeegrantBasic(t *testing.T) {
 			return err
 		}
 		_, err = test.PollForAck(ctx, gaia, gaiaHeight, gaiaHeight+10, tx.Packet)
-		return err
+		if err != nil {
+			return err
+		}
+
+		gaiaCC := gaia.(*ibcCosmos.CosmosChain)
+		txResp, err := gaiaCC.GetTransaction(tx.TxHash)
+		if err != nil {
+			return err
+		}
+		for _, evt := range txResp.Events {
+			logger.Debug("TX EVENT", zap.String("type", evt.Type))
+			for _, attr := range evt.Attributes {
+				logger.Debug("TX EVENT ATTR", zap.String("attr key", string(attr.Key)), zap.String("attr val", string(attr.Value)))
+			}
+		}
+
+		return errors.New("placeholder to force fail")
 	})
 
 	eg.Go(func() error {
@@ -186,12 +220,12 @@ func TestScenarioFeegrantBasic(t *testing.T) {
 	require.Equal(t, amountToSend, osmosisIBCBalance)
 
 	// Test grantee still has exact amount expected
-	gaiaGranteeIBCBalance, err := gaia.GetBalance(ctx, gaiaGranteeAddr, gaiaIbcDenom)
+	gaiaGranteeIBCBalance, err := gaia.GetBalance(ctx, gaiaGranteeAddr, gaia.Config().Denom)
 	require.NoError(t, err)
 	require.Equal(t, granteeFundAmount, gaiaGranteeIBCBalance)
 
 	// Test granter has less than they started with, meaning fees came from their account
-	gaiaGranterIBCBalance, err := gaia.GetBalance(ctx, gaiaGranterAddr, gaiaIbcDenom)
+	gaiaGranterIBCBalance, err := gaia.GetBalance(ctx, gaiaGranterAddr, gaia.Config().Denom)
 	require.NoError(t, err)
 	require.Less(t, gaiaGranterIBCBalance, fundAmount)
 }

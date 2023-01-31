@@ -57,6 +57,8 @@ func (r *Relayer) log() *zap.Logger {
 }
 
 func (r *Relayer) AddChainConfiguration(ctx context.Context, _ ibc.RelayerExecReporter, chainConfig ibc.ChainConfig, keyName, rpcAddr, grpcAddr string) error {
+	//grantees := []string{"grantee1"}
+
 	sys := &relayertest.System{HomeDir: r.home}
 	sys.MustAddChain(r.t, chainConfig.ChainID, cmd.ProviderConfigWrapper{
 		Type: "cosmos",
@@ -74,6 +76,11 @@ func (r *Relayer) AddChainConfiguration(ctx context.Context, _ ibc.RelayerExecRe
 			Timeout:      "10s",
 			OutputFormat: "json",
 			SignModeStr:  "direct",
+			// FeeGrants: &client.FeeGrantConfiguration{
+			// 	GranteesWanted:  len(grantees),
+			// 	GranterKey:      keyName,
+			// 	ManagedGrantees: grantees,
+			// },
 		},
 	})
 

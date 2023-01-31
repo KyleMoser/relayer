@@ -236,3 +236,5 @@ replace (
 )
 
 replace github.com/strangelove-ventures/lens => /home/kyle/projects/Strangelove/lens
+
+replace github.com/strangelove-ventures/ibctest/v5 => /home/kyle/projects/Strangelove/ibctest
