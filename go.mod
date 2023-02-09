@@ -14,7 +14,7 @@ require (
 	github.com/prometheus/client_golang v1.12.2
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.14.0
-	github.com/strangelove-ventures/lens v0.6.0
+	github.com/strangelove-ventures/lens v0.5.2-0.20230209001143-945166328652
 	github.com/stretchr/testify v1.8.1
 	github.com/tendermint/tendermint v0.34.23
 	go.uber.org/multierr v1.8.0
@@ -163,3 +163,5 @@ replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alp
 replace github.com/strangelove-ventures/lens => /home/kyle/projects/Strangelove/lens
 
 replace github.com/strangelove-ventures/ibctest/v5 => /home/kyle/projects/Strangelove/ibctest
+
+replace github.com/cosmos/cosmos-sdk => /home/kyle/projects/Strangelove/cosmos-sdk
