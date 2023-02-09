@@ -160,8 +160,10 @@ require (
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 
-replace github.com/strangelove-ventures/lens => /home/kyle/projects/Strangelove/lens
+//Note: go get github.com/strangelove-ventures/lens@feegrant-relayer will update the dep w/ this version
+replace github.com/strangelove-ventures/lens => github.com/strangelove-ventures/lens v0.5.2-0.20230209001143-945166328652
 
-replace github.com/strangelove-ventures/ibctest/v5 => /home/kyle/projects/Strangelove/ibctest
+//Note: go get github.com/strangelove-ventures/interchaintest@feegrant-relayer-testing will spit out the right version
+replace github.com/strangelove-ventures/ibctest/v5 => github.com/strangelove-ventures/ibctest/v5 v5.0.0-20230131041431-024339f38aa3
 
-replace github.com/cosmos/cosmos-sdk => /home/kyle/projects/Strangelove/cosmos-sdk
+replace github.com/cosmos/cosmos-sdk => github.com/KyleMoser/relayer-cosmos-sdk v0.46.6
