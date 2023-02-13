@@ -85,7 +85,7 @@ github.com/ChainSafe/go-schnorrkel v0.0.0-20200405005733-88cbf1b4c40d/go.mod h1:
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
 github.com/InjectiveLabs/sdk-go v1.42.4-lens h1:90uImanXE/+AOwbq1geijvvvyNgUiEUvjyWC0W98D9Y=
 github.com/InjectiveLabs/sdk-go v1.42.4-lens/go.mod h1:gVKlyJDwXQz4PR7QkOITbF89it2FVcB4ifRkP1hH/7k=
-github.com/KyleMoser/relayer-cosmos-sdk v0.46.6 h1:+gRfbCIDr8l8b6sfxnK5PyVp9lInEEhiRZuFiKkFcO0=
+github.com/KyleMoser/relayer-cosmos-sdk v0.46.6 h1:gyv1jGUUmNU9FCJZ1I4F2yjU+Y41flek1mielA48OLw=
 github.com/KyleMoser/relayer-cosmos-sdk v0.46.6/go.mod h1:8O5Hx8ULYTnZvSppHU+yRbCwb2AcpgKVMvDDlmve+Z4=
 github.com/OneOfOne/xxhash v1.2.2 h1:KMrpdQIwFcEqXDklaen+P1axHaj9BSKzvpUUfnHldSE=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
@@ -603,8 +603,8 @@ github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An
 github.com/spf13/viper v1.3.2/go.mod h1:ZiWeW+zYFKm7srdB9IoDzzZXaJaI5eL9QjNiN/DMA2s=
 github.com/spf13/viper v1.14.0 h1:Rg7d3Lo706X9tHsJMUjdiwMpHB7W8WnSVOssIY+JElU=
 github.com/spf13/viper v1.14.0/go.mod h1:WT//axPky3FdvXHzGw33dNdXXXfFQqmEalje+egj8As=
-github.com/strangelove-ventures/lens v0.5.2-0.20230209001143-945166328652 h1:YBGBiKjOniXldf8+KL/bA/52WpL8Rs85qAqxo4bSB7o=
-github.com/strangelove-ventures/lens v0.5.2-0.20230209001143-945166328652/go.mod h1:8Biti+q5YXTgChn1oN2BaLKf0aeVbEThCZ8M+aGmCmU=
+github.com/strangelove-ventures/lens v0.5.2-0.20230213224301-b1155a6df0a3 h1:kIS+aTsJ/LgISn8GUzvmCy+ifSyOjgn9nPo0JPE6CVA=
+github.com/strangelove-ventures/lens v0.5.2-0.20230213224301-b1155a6df0a3/go.mod h1:8Biti+q5YXTgChn1oN2BaLKf0aeVbEThCZ8M+aGmCmU=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.4.0/go.mod h1:YvHI0jy2hoMjB+UWwv71VJQ9isScKT/TqJzVSSt89Yw=

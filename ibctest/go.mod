@@ -9,7 +9,7 @@ require (
 	github.com/docker/docker v20.10.19+incompatible
 	github.com/moby/moby v20.10.18+incompatible
 	github.com/strangelove-ventures/ibctest/v5 v5.0.0-20221201055938-fa49178c17eb
-	github.com/strangelove-ventures/lens v0.6.0
+	github.com/strangelove-ventures/lens v0.5.2-0.20230213224301-b1155a6df0a3
 	github.com/stretchr/testify v1.8.1
 	github.com/tendermint/tendermint v0.34.23
 	go.uber.org/zap v1.23.0
@@ -236,7 +236,7 @@ replace (
 )
 
 //Note: go get github.com/strangelove-ventures/lens@feegrant-relayer will update the dep w/ this version
-replace github.com/strangelove-ventures/lens => github.com/strangelove-ventures/lens v0.5.2-0.20230209001143-945166328652
+replace github.com/strangelove-ventures/lens => github.com/strangelove-ventures/lens v0.5.2-0.20230213224301-b1155a6df0a3
 
 //Note: go get github.com/strangelove-ventures/interchaintest@feegrant-relayer-testing will spit out the right version
 replace github.com/strangelove-ventures/ibctest/v5 => github.com/strangelove-ventures/ibctest/v5 v5.0.0-20230131041431-024339f38aa3
