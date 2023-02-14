@@ -20,7 +20,6 @@ import (
 	"github.com/strangelove-ventures/ibctest/v5/testreporter"
 	"github.com/strangelove-ventures/lens/client"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/sync/errgroup"
 )
@@ -38,6 +37,9 @@ func TestScenarioFeegrantBasic(t *testing.T) {
 	bz, _ := hex.DecodeString("035AD6810A47F073553FF30D2FCC7E0D3B1C0B74B61A1AAA2582344037151E143A")
 	sEnc := b64.StdEncoding.EncodeToString(bz)
 	fmt.Printf("Default pub key b64: %s", sEnc)
+
+	logger := zaptest.NewLogger(t)
+	ante.Logger = logger
 
 	nv := 1
 	nf := 0
@@ -170,10 +172,9 @@ func TestScenarioFeegrantBasic(t *testing.T) {
 	//osmoGranteeAddr := osmosisGrantee.Bech32Address(osmosis.Config().Bech32Prefix)
 	//osmoGranterAddr := osmosisGranter.Bech32Address(osmosis.Config().Bech32Prefix)
 
-	logger := zaptest.NewLogger(t)
-	ante.Logger = logger
-	logger.Debug("Key address", zap.String("gaia grantee", gaiaGranteeAddr), zap.String("gaia grantee key", gaiaGrantee.KeyName))
-	logger.Debug("Key address", zap.String("gaia granter", gaiaGranterAddr), zap.String("gaia granter key", gaiaGranter.KeyName))
+	fmt.Printf("Gaia grantee address %s,gaia grantee key %s", gaiaGranteeAddr, gaiaGrantee.KeyName)
+	fmt.Printf("Gaia granter address %s,gaia granter key %s", gaiaGranterAddr, gaiaGranter.KeyName)
+
 	//logger.Debug("Key address", zap.String("osmosis grantee", osmoGranteeAddr), zap.String("osmosis grantee key", osmosisGrantee.KeyName))
 	//logger.Debug("Key address", zap.String("osmosis granter", osmoGranterAddr), zap.String("osmosis granter key", osmosisGranter.KeyName))
 
@@ -184,8 +185,8 @@ func TestScenarioFeegrantBasic(t *testing.T) {
 		t.Fatalf("failed to rly config feegrants: %v", res.Err)
 	}
 
-	time.Sleep(14 * time.Second)
-	r.StartRelayer(ctx, eRep, ibcPath)
+	//time.Sleep(14 * time.Second)
+	//r.StartRelayer(ctx, eRep, ibcPath)
 
 	// Send Transaction
 	amountToSend := int64(1_000)
@@ -198,11 +199,13 @@ func TestScenarioFeegrantBasic(t *testing.T) {
 	//osmosisHeight, err := osmosis.Height(ctx)
 	//require.NoError(t, err)
 
-	logger.Debug("Before send ibc transfer")
+	fmt.Printf("Before send ibc transfer")
 
 	var eg errgroup.Group
+	var gaiaTx ibc.Tx
+
 	eg.Go(func() error {
-		tx, err := gaia.SendIBCTransfer(ctx, gaiaChannel.ChannelID, gaiaUser.KeyName, ibc.WalletAmount{
+		gaiaTx, err = gaia.SendIBCTransfer(ctx, gaiaChannel.ChannelID, gaiaUser.KeyName, ibc.WalletAmount{
 			Address: gaiaDstAddress,
 			Denom:   gaia.Config().Denom,
 			Amount:  amountToSend,
@@ -212,11 +215,7 @@ func TestScenarioFeegrantBasic(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if err := tx.Validate(); err != nil {
-			return err
-		}
-		_, err = test.PollForAck(ctx, gaia, gaiaHeight, gaiaHeight+10, tx.Packet)
-		if err != nil {
+		if err := gaiaTx.Validate(); err != nil {
 			return err
 		}
 
@@ -235,8 +234,20 @@ func TestScenarioFeegrantBasic(t *testing.T) {
 		return err
 	})
 
+	// Acks should exist (normally, but I moved Poll till after so they won't here)
+	require.NoError(t, eg.Wait())
+
 	time.Sleep(10 * time.Second)
-	logger.Debug("After send ibc transfer")
+	fmt.Printf("After SendIBCTransfer")
+	require.NoError(t, r.FlushPackets(ctx, eRep, ibcPath, osmosisChannel.ChannelID))
+	time.Sleep(10 * time.Second)
+	fmt.Printf("After r.FlushPackets")
+	require.NoError(t, r.FlushAcknowledgements(ctx, eRep, ibcPath, gaiaChannel.ChannelID))
+	time.Sleep(10 * time.Second)
+	fmt.Printf("After r.FlushAcknowledgements")
+
+	_, err = test.PollForAck(ctx, gaia, gaiaHeight, gaiaHeight+10, gaiaTx.Packet)
+	require.NoError(t, err)
 
 	// eg.Go(func() error {
 	// 	tx, err := osmosis.SendIBCTransfer(ctx, osmosisChannel.ChannelID, osmosisUser.KeyName, ibc.WalletAmount{
@@ -255,8 +266,6 @@ func TestScenarioFeegrantBasic(t *testing.T) {
 	// 	_, err = test.PollForAck(ctx, osmosis, osmosisHeight, osmosisHeight+10, tx.Packet)
 	// 	return err
 	// })
-	// Acks should exist
-	require.NoError(t, eg.Wait())
 
 	// Trace IBC Denom
 	gaiaDenomTrace := transfertypes.ParseDenomTrace(transfertypes.GetPrefixedDenom(osmosisChannel.PortID, osmosisChannel.ChannelID, gaia.Config().Denom))
