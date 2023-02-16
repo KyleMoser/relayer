@@ -161,7 +161,7 @@ require (
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 
 //Note: go get github.com/strangelove-ventures/lens@feegrant-relayer will update the dep w/ this version
-replace github.com/strangelove-ventures/lens => github.com/strangelove-ventures/lens v0.5.2-0.20230213224301-b1155a6df0a3
+replace github.com/strangelove-ventures/lens => github.com/strangelove-ventures/lens v0.5.2-0.20230216002739-2fbfa838ca69
 
 //replace github.com/strangelove-ventures/lens => /home/kyle/projects/Strangelove/lens
 

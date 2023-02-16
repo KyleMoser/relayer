@@ -1092,8 +1092,8 @@ github.com/strangelove-ventures/go-subkey v1.0.7 h1:cOP/Lajg3uxV/tvspu0m6+0Cu+DJ
 github.com/strangelove-ventures/go-subkey v1.0.7/go.mod h1:E34izOIEm+sZ1YmYawYRquqBQWeZBjVB4pF7bMuhc1c=
 github.com/strangelove-ventures/ibctest/v5 v5.0.0-20230131041431-024339f38aa3 h1:nrHElp1IfY/0Nkq5hocnkfAJl337YchBKtYHZnPlYI0=
 github.com/strangelove-ventures/ibctest/v5 v5.0.0-20230131041431-024339f38aa3/go.mod h1:C284t8FhFrldr1BfQHDLsAMMzAWczTgeruePi7M6TmA=
-github.com/strangelove-ventures/lens v0.5.2-0.20230213224301-b1155a6df0a3 h1:kIS+aTsJ/LgISn8GUzvmCy+ifSyOjgn9nPo0JPE6CVA=
-github.com/strangelove-ventures/lens v0.5.2-0.20230213224301-b1155a6df0a3/go.mod h1:8Biti+q5YXTgChn1oN2BaLKf0aeVbEThCZ8M+aGmCmU=
+github.com/strangelove-ventures/lens v0.5.2-0.20230216002739-2fbfa838ca69 h1:ocuEVhxuXLhjRxSC7y5Zsui9XEwniobL23WDlMIIf88=
+github.com/strangelove-ventures/lens v0.5.2-0.20230216002739-2fbfa838ca69/go.mod h1:8Biti+q5YXTgChn1oN2BaLKf0aeVbEThCZ8M+aGmCmU=
 github.com/stretchr/objx v0.0.0-20180129172003-8a3f7159479f/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=

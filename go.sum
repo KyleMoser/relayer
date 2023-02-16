@@ -603,8 +603,8 @@ github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An
 github.com/spf13/viper v1.3.2/go.mod h1:ZiWeW+zYFKm7srdB9IoDzzZXaJaI5eL9QjNiN/DMA2s=
 github.com/spf13/viper v1.14.0 h1:Rg7d3Lo706X9tHsJMUjdiwMpHB7W8WnSVOssIY+JElU=
 github.com/spf13/viper v1.14.0/go.mod h1:WT//axPky3FdvXHzGw33dNdXXXfFQqmEalje+egj8As=
-github.com/strangelove-ventures/lens v0.5.2-0.20230213224301-b1155a6df0a3 h1:kIS+aTsJ/LgISn8GUzvmCy+ifSyOjgn9nPo0JPE6CVA=
-github.com/strangelove-ventures/lens v0.5.2-0.20230213224301-b1155a6df0a3/go.mod h1:8Biti+q5YXTgChn1oN2BaLKf0aeVbEThCZ8M+aGmCmU=
+github.com/strangelove-ventures/lens v0.5.2-0.20230216002739-2fbfa838ca69 h1:ocuEVhxuXLhjRxSC7y5Zsui9XEwniobL23WDlMIIf88=
+github.com/strangelove-ventures/lens v0.5.2-0.20230216002739-2fbfa838ca69/go.mod h1:8Biti+q5YXTgChn1oN2BaLKf0aeVbEThCZ8M+aGmCmU=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.4.0/go.mod h1:YvHI0jy2hoMjB+UWwv71VJQ9isScKT/TqJzVSSt89Yw=

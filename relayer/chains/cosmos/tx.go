@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"regexp"
 	"strconv"
 	"strings"
@@ -81,8 +82,31 @@ func (cc *CosmosProvider) SendMessages(ctx context.Context, msgs []provider.Rela
 	defer cc.txMu.Unlock()
 
 	if err := retry.Do(func() error {
+		txSignerKey, feegranterKey := cc.GetTxFeeGrant()
+		signerAcc, err := cc.GetKeyAddressForKey(txSignerKey)
+		if err != nil {
+			return err
+		}
+		signerAccAddr, err := cc.EncodeBech32AccAddr(signerAcc)
+		if err != nil {
+			return err
+		}
+
+		//Overwrite the 'Signer' field in any Msgs that provide an 'optionalSetSigner' callback
+		for _, curr := range msgs {
+			if cMsg, ok := curr.(CosmosMessage); ok {
+				if cMsg.SetSigner != nil {
+					cMsg.SetSigner(signerAccAddr)
+				}
+			}
+		}
+
 		cMsgs := CosmosMsgs(msgs...)
-		txBytes, sequence, f, err := cc.BuildTx(ctx, cMsgs, memo, 0)
+		rand.Seed(time.Now().UnixNano())
+		logId := rand.Int()
+		txBytes, sequence, f, err := cc.BuildTxWith(ctx, cMsgs, memo, 0, txSignerKey, feegranterKey, logId)
+
+		//txBytes, sequence, f, err := cc.BuildTx(ctx, cMsgs, memo, 0)
 		fees = f
 		if err != nil {
 			errMsg := err.Error()
@@ -270,7 +294,9 @@ func (cc *CosmosProvider) MsgCreateClient(
 		Signer:         signer,
 	}
 
-	return NewCosmosMessage(msg), nil
+	return NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), nil
 }
 
 func (cc *CosmosProvider) MsgUpdateClient(srcClientId string, dstHeader ibcexported.Header) (provider.RelayerMessage, error) {
@@ -290,7 +316,9 @@ func (cc *CosmosProvider) MsgUpdateClient(srcClientId string, dstHeader ibcexpor
 		Signer:   acc,
 	}
 
-	return NewCosmosMessage(msg), nil
+	return NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), nil
 }
 
 func (cc *CosmosProvider) MsgUpgradeClient(srcClientId string, consRes *clienttypes.QueryConsensusStateResponse, clientRes *clienttypes.QueryClientStateResponse) (provider.RelayerMessage, error) {
@@ -301,9 +329,14 @@ func (cc *CosmosProvider) MsgUpgradeClient(srcClientId string, consRes *clientty
 	if acc, err = cc.Address(); err != nil {
 		return nil, err
 	}
-	return NewCosmosMessage(&clienttypes.MsgUpgradeClient{ClientId: srcClientId, ClientState: clientRes.ClientState,
+
+	msgUpgradeClient := &clienttypes.MsgUpgradeClient{ClientId: srcClientId, ClientState: clientRes.ClientState,
 		ConsensusState: consRes.ConsensusState, ProofUpgradeClient: consRes.GetProof(),
-		ProofUpgradeConsensusState: consRes.ConsensusState.Value, Signer: acc}), nil
+		ProofUpgradeConsensusState: consRes.ConsensusState.Value, Signer: acc}
+
+	return NewCosmosMessage(msgUpgradeClient, func(signer string) {
+		msgUpgradeClient.Signer = signer
+	}), nil
 }
 
 // mustGetHeight takes the height inteface and returns the actual height
@@ -339,7 +372,7 @@ func (cc *CosmosProvider) MsgTransfer(
 		msg.TimeoutHeight = info.TimeoutHeight
 	}
 
-	return NewCosmosMessage(msg), nil
+	return NewCosmosMessage(msg, nil), nil
 }
 
 func (cc *CosmosProvider) ValidatePacket(msgTransfer provider.PacketInfo, latest provider.LatestBlock) error {
@@ -405,7 +438,9 @@ func (cc *CosmosProvider) MsgRecvPacket(
 		Signer:          signer,
 	}
 
-	return NewCosmosMessage(msg), nil
+	return NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), nil
 }
 
 func (cc *CosmosProvider) PacketAcknowledgement(
@@ -443,7 +478,9 @@ func (cc *CosmosProvider) MsgAcknowledgement(
 		Signer:          signer,
 	}
 
-	return NewCosmosMessage(msg), nil
+	return NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), nil
 }
 
 func (cc *CosmosProvider) PacketReceipt(
@@ -496,7 +533,9 @@ func (cc *CosmosProvider) MsgTimeout(msgTransfer provider.PacketInfo, proof prov
 		Signer:           signer,
 	}
 
-	return NewCosmosMessage(assembled), nil
+	return NewCosmosMessage(assembled, func(signer string) {
+		assembled.Signer = signer
+	}), nil
 }
 
 func (cc *CosmosProvider) MsgTimeoutOnClose(msgTransfer provider.PacketInfo, proof provider.PacketProof) (provider.RelayerMessage, error) {
@@ -512,7 +551,9 @@ func (cc *CosmosProvider) MsgTimeoutOnClose(msgTransfer provider.PacketInfo, pro
 		Signer:           signer,
 	}
 
-	return NewCosmosMessage(assembled), nil
+	return NewCosmosMessage(assembled, func(signer string) {
+		assembled.Signer = signer
+	}), nil
 }
 
 func (cc *CosmosProvider) MsgConnectionOpenInit(info provider.ConnectionInfo, proof provider.ConnectionProof) (provider.RelayerMessage, error) {
@@ -532,7 +573,10 @@ func (cc *CosmosProvider) MsgConnectionOpenInit(info provider.ConnectionInfo, pr
 		Signer:      signer,
 	}
 
-	return NewCosmosMessage(msg), nil
+	//TODO: not 100% sure this message type should override the signer (will probably work but isn't strictly necessary?)
+	return NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), nil
 }
 
 func (cc *CosmosProvider) ConnectionHandshakeProof(
@@ -594,7 +638,9 @@ func (cc *CosmosProvider) MsgConnectionOpenTry(msgOpenInit provider.ConnectionIn
 		Signer:               signer,
 	}
 
-	return NewCosmosMessage(msg), nil
+	return NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), nil
 }
 
 func (cc *CosmosProvider) MsgConnectionOpenAck(msgOpenTry provider.ConnectionInfo, proof provider.ConnectionProof) (provider.RelayerMessage, error) {
@@ -624,7 +670,9 @@ func (cc *CosmosProvider) MsgConnectionOpenAck(msgOpenTry provider.ConnectionInf
 		Signer:          signer,
 	}
 
-	return NewCosmosMessage(msg), nil
+	return NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), nil
 }
 
 func (cc *CosmosProvider) ConnectionProof(
@@ -655,7 +703,9 @@ func (cc *CosmosProvider) MsgConnectionOpenConfirm(msgOpenAck provider.Connectio
 		Signer:       signer,
 	}
 
-	return NewCosmosMessage(msg), nil
+	return NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), nil
 }
 
 func (cc *CosmosProvider) MsgChannelOpenInit(info provider.ChannelInfo, proof provider.ChannelProof) (provider.RelayerMessage, error) {
@@ -678,7 +728,9 @@ func (cc *CosmosProvider) MsgChannelOpenInit(info provider.ChannelInfo, proof pr
 		Signer: signer,
 	}
 
-	return NewCosmosMessage(msg), nil
+	return NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), nil
 }
 
 func (cc *CosmosProvider) ChannelProof(
@@ -725,7 +777,9 @@ func (cc *CosmosProvider) MsgChannelOpenTry(msgOpenInit provider.ChannelInfo, pr
 		Signer:              signer,
 	}
 
-	return NewCosmosMessage(msg), nil
+	return NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), nil
 }
 
 func (cc *CosmosProvider) MsgChannelOpenAck(msgOpenTry provider.ChannelInfo, proof provider.ChannelProof) (provider.RelayerMessage, error) {
@@ -743,7 +797,9 @@ func (cc *CosmosProvider) MsgChannelOpenAck(msgOpenTry provider.ChannelInfo, pro
 		Signer:                signer,
 	}
 
-	return NewCosmosMessage(msg), nil
+	return NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), nil
 }
 
 func (cc *CosmosProvider) MsgChannelOpenConfirm(msgOpenAck provider.ChannelInfo, proof provider.ChannelProof) (provider.RelayerMessage, error) {
@@ -759,7 +815,9 @@ func (cc *CosmosProvider) MsgChannelOpenConfirm(msgOpenAck provider.ChannelInfo,
 		Signer:      signer,
 	}
 
-	return NewCosmosMessage(msg), nil
+	return NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), nil
 }
 
 func (cc *CosmosProvider) MsgChannelCloseInit(info provider.ChannelInfo, proof provider.ChannelProof) (provider.RelayerMessage, error) {
@@ -773,7 +831,9 @@ func (cc *CosmosProvider) MsgChannelCloseInit(info provider.ChannelInfo, proof p
 		Signer:    signer,
 	}
 
-	return NewCosmosMessage(msg), nil
+	return NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), nil
 }
 
 func (cc *CosmosProvider) MsgChannelCloseConfirm(msgCloseInit provider.ChannelInfo, proof provider.ChannelProof) (provider.RelayerMessage, error) {
@@ -789,7 +849,9 @@ func (cc *CosmosProvider) MsgChannelCloseConfirm(msgCloseInit provider.ChannelIn
 		Signer:      signer,
 	}
 
-	return NewCosmosMessage(msg), nil
+	return NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), nil
 }
 
 func (cc *CosmosProvider) MsgUpdateClientHeader(latestHeader provider.IBCHeader, trustedHeight clienttypes.Height, trustedHeader provider.IBCHeader) (ibcexported.Header, error) {

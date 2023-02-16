@@ -13,12 +13,22 @@ import (
 var _ provider.RelayerMessage = &CosmosMessage{}
 
 type CosmosMessage struct {
-	Msg sdk.Msg
+	Msg       sdk.Msg
+	SetSigner func(string) //callback to update the Msg Signer field
 }
 
-func NewCosmosMessage(msg sdk.Msg) provider.RelayerMessage {
+// type SdkMsgWrapper interface {
+// 	GetMsg() sdk.Msg
+// 	SetSigner(string)
+// }
+
+// Wrapper to create a cosmos message. optionalSetSigner should be set to a function that updates the 'msg' Signer
+// IF the sdk Msg has a Signer field and feegranting is implemented for the relayer.
+// Reason: when TXs are submitted on chain, the Msg.Signer MUST be set to the address that signs the TX.
+func NewCosmosMessage(msg sdk.Msg, optionalSetSigner func(string)) provider.RelayerMessage {
 	return CosmosMessage{
-		Msg: msg,
+		Msg:       msg,
+		SetSigner: optionalSetSigner,
 	}
 }
 

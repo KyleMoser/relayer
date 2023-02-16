@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"testing"
-	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	ante "github.com/cosmos/cosmos-sdk/x/auth/ante"
@@ -136,6 +135,7 @@ func TestScenarioFeegrantBasic(t *testing.T) {
 	//osmosisGranterMnemonic := "deal faint choice forward valid practice secret lava harbor stadium train view improve tide cook sadness juice trap mansion smooth erupt version parrot canvas"
 	gaiaGranteeMnemonic := "unusual car spray work spread column badge radar oxygen oblige roof patrol wheel sing damage advice flower forest segment park blue defense morning manage"
 	//osmosisGranteeMnemonic := "flight toilet early leaf hen dragon story relief indoor gap shoot firm topple start where illegal paper risk insect neutral busy olympic glory evoke"
+	ibcTransferMnemonic := "flight toilet early leaf hen dragon story relief indoor gap shoot firm topple start where illegal paper risk insect neutral busy olympic glory evoke"
 
 	granteeKey := "grantee1"
 	granterKey := "default"
@@ -163,17 +163,19 @@ func TestScenarioFeegrantBasic(t *testing.T) {
 	gaiaGrantee := GetAndFundTestUsers(t, ctx, granteeKey, gaiaGranteeMnemonic, int64(granteeFundAmount), gaia)[0]
 	//osmosisGrantee := GetAndFundTestUsers(t, ctx, granteeKey, osmosisGranteeMnemonic, int64(granteeFundAmount), osmosis)[0]
 	//osmosisRecipient := GetAndFundTestUsers(t, ctx, "recipient", "", int64(fundAmount), osmosis)
-	gaiaRecipient := GetAndFundTestUsers(t, ctx, "recipient", "", int64(fundAmount), gaia)
+	gaiaRecipient := GetAndFundTestUsers(t, ctx, "recipient", ibcTransferMnemonic, int64(fundAmount), gaia)
 	//osmosisUser := osmosisRecipient[0]
 	gaiaUser := gaiaRecipient[0]
 
 	gaiaGranteeAddr := gaiaGrantee.Bech32Address(gaia.Config().Bech32Prefix)
 	gaiaGranterAddr := gaiaGranter.Bech32Address(gaia.Config().Bech32Prefix)
+	gaiaUserAddr := gaiaUser.Bech32Address(gaia.Config().Bech32Prefix)
 	//osmoGranteeAddr := osmosisGrantee.Bech32Address(osmosis.Config().Bech32Prefix)
 	//osmoGranterAddr := osmosisGranter.Bech32Address(osmosis.Config().Bech32Prefix)
 
 	fmt.Printf("Gaia grantee address %s,gaia grantee key %s", gaiaGranteeAddr, gaiaGrantee.KeyName)
 	fmt.Printf("Gaia granter address %s,gaia granter key %s", gaiaGranterAddr, gaiaGranter.KeyName)
+	fmt.Printf("Gaia user address %s, gaia user key %s", gaiaUserAddr, gaiaUser.KeyName)
 
 	//logger.Debug("Key address", zap.String("osmosis grantee", osmoGranteeAddr), zap.String("osmosis grantee key", osmosisGrantee.KeyName))
 	//logger.Debug("Key address", zap.String("osmosis granter", osmoGranterAddr), zap.String("osmosis granter key", osmosisGranter.KeyName))
@@ -237,14 +239,11 @@ func TestScenarioFeegrantBasic(t *testing.T) {
 	// Acks should exist (normally, but I moved Poll till after so they won't here)
 	require.NoError(t, eg.Wait())
 
-	time.Sleep(10 * time.Second)
-	fmt.Printf("After SendIBCTransfer")
+	fmt.Printf("After SendIBCTransfer\n")
 	require.NoError(t, r.FlushPackets(ctx, eRep, ibcPath, osmosisChannel.ChannelID))
-	time.Sleep(10 * time.Second)
-	fmt.Printf("After r.FlushPackets")
+	fmt.Printf("After r.FlushPackets\n")
 	require.NoError(t, r.FlushAcknowledgements(ctx, eRep, ibcPath, gaiaChannel.ChannelID))
-	time.Sleep(10 * time.Second)
-	fmt.Printf("After r.FlushAcknowledgements")
+	fmt.Printf("After r.FlushAcknowledgements\n")
 
 	_, err = test.PollForAck(ctx, gaia, gaiaHeight, gaiaHeight+10, gaiaTx.Packet)
 	require.NoError(t, err)
