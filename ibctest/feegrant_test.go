@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"testing"
+	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	ante "github.com/cosmos/cosmos-sdk/x/auth/ante"
@@ -19,6 +20,7 @@ import (
 	"github.com/strangelove-ventures/ibctest/v5/testreporter"
 	"github.com/strangelove-ventures/lens/client"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/sync/errgroup"
 )
@@ -132,9 +134,9 @@ func TestScenarioFeegrantBasic(t *testing.T) {
 
 	//Mnemonic from the juno repo test user
 	gaiaGranterMnemonic := "clip hire initial neck maid actor venue client foam budget lock catalog sweet steak waste crater broccoli pipe steak sister coyote moment obvious choose"
-	//osmosisGranterMnemonic := "deal faint choice forward valid practice secret lava harbor stadium train view improve tide cook sadness juice trap mansion smooth erupt version parrot canvas"
+	osmosisGranterMnemonic := "deal faint choice forward valid practice secret lava harbor stadium train view improve tide cook sadness juice trap mansion smooth erupt version parrot canvas"
 	gaiaGranteeMnemonic := "unusual car spray work spread column badge radar oxygen oblige roof patrol wheel sing damage advice flower forest segment park blue defense morning manage"
-	//osmosisGranteeMnemonic := "flight toilet early leaf hen dragon story relief indoor gap shoot firm topple start where illegal paper risk insect neutral busy olympic glory evoke"
+	osmosisGranteeMnemonic := "flight toilet early leaf hen dragon story relief indoor gap shoot firm topple start where illegal paper risk insect neutral busy olympic glory evoke"
 	ibcTransferMnemonic := "flight toilet early leaf hen dragon story relief indoor gap shoot firm topple start where illegal paper risk insect neutral busy olympic glory evoke"
 
 	granteeKey := "grantee1"
@@ -159,47 +161,53 @@ func TestScenarioFeegrantBasic(t *testing.T) {
 	}
 
 	gaiaGranter := GetAndFundTestUsers(t, ctx, granterKey, gaiaGranterMnemonic, int64(fundAmount), gaia)[0]
-	//osmosisGranter := GetAndFundTestUsers(t, ctx, granterKey, osmosisGranterMnemonic, int64(fundAmount), osmosis)[0]
+	osmosisGranter := GetAndFundTestUsers(t, ctx, granterKey, osmosisGranterMnemonic, int64(fundAmount), osmosis)[0]
 	gaiaGrantee := GetAndFundTestUsers(t, ctx, granteeKey, gaiaGranteeMnemonic, int64(granteeFundAmount), gaia)[0]
-	//osmosisGrantee := GetAndFundTestUsers(t, ctx, granteeKey, osmosisGranteeMnemonic, int64(granteeFundAmount), osmosis)[0]
-	//osmosisRecipient := GetAndFundTestUsers(t, ctx, "recipient", "", int64(fundAmount), osmosis)
+	osmosisGrantee := GetAndFundTestUsers(t, ctx, granteeKey, osmosisGranteeMnemonic, int64(granteeFundAmount), osmosis)[0]
+	osmosisRecipient := GetAndFundTestUsers(t, ctx, "recipient", "", int64(fundAmount), osmosis)
 	gaiaRecipient := GetAndFundTestUsers(t, ctx, "recipient", ibcTransferMnemonic, int64(fundAmount), gaia)
-	//osmosisUser := osmosisRecipient[0]
+	osmosisUser := osmosisRecipient[0]
 	gaiaUser := gaiaRecipient[0]
 
 	gaiaGranteeAddr := gaiaGrantee.Bech32Address(gaia.Config().Bech32Prefix)
 	gaiaGranterAddr := gaiaGranter.Bech32Address(gaia.Config().Bech32Prefix)
 	gaiaUserAddr := gaiaUser.Bech32Address(gaia.Config().Bech32Prefix)
-	//osmoGranteeAddr := osmosisGrantee.Bech32Address(osmosis.Config().Bech32Prefix)
-	//osmoGranterAddr := osmosisGranter.Bech32Address(osmosis.Config().Bech32Prefix)
+	osmoGranteeAddr := osmosisGrantee.Bech32Address(osmosis.Config().Bech32Prefix)
+	osmoGranterAddr := osmosisGranter.Bech32Address(osmosis.Config().Bech32Prefix)
 
 	fmt.Printf("Gaia grantee address %s,gaia grantee key %s", gaiaGranteeAddr, gaiaGrantee.KeyName)
 	fmt.Printf("Gaia granter address %s,gaia granter key %s", gaiaGranterAddr, gaiaGranter.KeyName)
 	fmt.Printf("Gaia user address %s, gaia user key %s", gaiaUserAddr, gaiaUser.KeyName)
 
-	//logger.Debug("Key address", zap.String("osmosis grantee", osmoGranteeAddr), zap.String("osmosis grantee key", osmosisGrantee.KeyName))
-	//logger.Debug("Key address", zap.String("osmosis granter", osmoGranterAddr), zap.String("osmosis granter key", osmosisGranter.KeyName))
+	logger.Debug("Key address", zap.String("osmosis grantee", osmoGranteeAddr), zap.String("osmosis grantee key", osmosisGrantee.KeyName))
+	logger.Debug("Key address", zap.String("osmosis granter", osmoGranterAddr), zap.String("osmosis granter key", osmosisGranter.KeyName))
 
-	//You MUST run the configure feegrant command prior to starting the relayer, otherwise it'd be like you never set it up at all.
+	//You MUST run the configure feegrant command prior to starting the relayer, otherwise it'd be like you never set it up at all (within this test)
 	localRelayer := r.(*Relayer)
 	res := localRelayer.sys().Run(logger, "chains", "configure", "feegrant", "basicallowance", gaia.Config().ChainID, gaiaGranter.KeyName, "--grantees", gaiaGrantee.KeyName, "--overwrite-granter")
 	if res.Err != nil {
 		t.Fatalf("failed to rly config feegrants: %v", res.Err)
 	}
 
-	//time.Sleep(14 * time.Second)
-	//r.StartRelayer(ctx, eRep, ibcPath)
+	//Same as above (configure chain feegrants), but for Osmosis
+	res = localRelayer.sys().Run(logger, "chains", "configure", "feegrant", "basicallowance", osmosis.Config().ChainID, osmosisGranter.KeyName, "--grantees", osmosisGrantee.KeyName, "--overwrite-granter")
+	if res.Err != nil {
+		t.Fatalf("failed to rly config feegrants: %v", res.Err)
+	}
+
+	time.Sleep(14 * time.Second)
+	r.StartRelayer(ctx, eRep, ibcPath)
 
 	// Send Transaction
 	amountToSend := int64(1_000)
 	gaiaDstAddress := gaiaUser.Bech32Address(osmosis.Config().Bech32Prefix)
-	//osmosisDstAddress := osmosisUser.Bech32Address(gaia.Config().Bech32Prefix)
+	osmosisDstAddress := osmosisUser.Bech32Address(gaia.Config().Bech32Prefix)
 
 	gaiaHeight, err := gaia.Height(ctx)
 	require.NoError(t, err)
 
-	//osmosisHeight, err := osmosis.Height(ctx)
-	//require.NoError(t, err)
+	osmosisHeight, err := osmosis.Height(ctx)
+	require.NoError(t, err)
 
 	fmt.Printf("Before send ibc transfer")
 
@@ -233,54 +241,52 @@ func TestScenarioFeegrantBasic(t *testing.T) {
 		// 	}
 		// }
 
+		_, err = test.PollForAck(ctx, gaia, gaiaHeight, gaiaHeight+10, gaiaTx.Packet)
 		return err
 	})
 
-	// Acks should exist (normally, but I moved Poll till after so they won't here)
-	require.NoError(t, eg.Wait())
+	//fmt.Printf("After SendIBCTransfer\n")
+	//require.NoError(t, r.FlushPackets(ctx, eRep, ibcPath, osmosisChannel.ChannelID))
+	//fmt.Printf("After r.FlushPackets\n")
+	//require.NoError(t, r.FlushAcknowledgements(ctx, eRep, ibcPath, gaiaChannel.ChannelID))
+	//fmt.Printf("After r.FlushAcknowledgements\n")
 
-	fmt.Printf("After SendIBCTransfer\n")
-	require.NoError(t, r.FlushPackets(ctx, eRep, ibcPath, osmosisChannel.ChannelID))
-	fmt.Printf("After r.FlushPackets\n")
-	require.NoError(t, r.FlushAcknowledgements(ctx, eRep, ibcPath, gaiaChannel.ChannelID))
-	fmt.Printf("After r.FlushAcknowledgements\n")
+	eg.Go(func() error {
+		tx, err := osmosis.SendIBCTransfer(ctx, osmosisChannel.ChannelID, osmosisUser.KeyName, ibc.WalletAmount{
+			Address: osmosisDstAddress,
+			Denom:   osmosis.Config().Denom,
+			Amount:  amountToSend,
+		},
+			nil,
+		)
+		if err != nil {
+			return err
+		}
+		if err := tx.Validate(); err != nil {
+			return err
+		}
+		_, err = test.PollForAck(ctx, osmosis, osmosisHeight, osmosisHeight+10, tx.Packet)
+		return err
+	})
 
-	_, err = test.PollForAck(ctx, gaia, gaiaHeight, gaiaHeight+10, gaiaTx.Packet)
 	require.NoError(t, err)
-
-	// eg.Go(func() error {
-	// 	tx, err := osmosis.SendIBCTransfer(ctx, osmosisChannel.ChannelID, osmosisUser.KeyName, ibc.WalletAmount{
-	// 		Address: osmosisDstAddress,
-	// 		Denom:   osmosis.Config().Denom,
-	// 		Amount:  amountToSend,
-	// 	},
-	// 		nil,
-	// 	)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	if err := tx.Validate(); err != nil {
-	// 		return err
-	// 	}
-	// 	_, err = test.PollForAck(ctx, osmosis, osmosisHeight, osmosisHeight+10, tx.Packet)
-	// 	return err
-	// })
+	require.NoError(t, eg.Wait())
 
 	// Trace IBC Denom
 	gaiaDenomTrace := transfertypes.ParseDenomTrace(transfertypes.GetPrefixedDenom(osmosisChannel.PortID, osmosisChannel.ChannelID, gaia.Config().Denom))
 	gaiaIbcDenom := gaiaDenomTrace.IBCDenom()
 
-	//osmosisDenomTrace := transfertypes.ParseDenomTrace(transfertypes.GetPrefixedDenom(gaiaChannel.PortID, gaiaChannel.ChannelID, osmosis.Config().Denom))
-	//osmosisIbcDenom := osmosisDenomTrace.IBCDenom()
+	osmosisDenomTrace := transfertypes.ParseDenomTrace(transfertypes.GetPrefixedDenom(gaiaChannel.PortID, gaiaChannel.ChannelID, osmosis.Config().Denom))
+	osmosisIbcDenom := osmosisDenomTrace.IBCDenom()
 
 	// Test destination wallets have increased funds
 	gaiaIBCBalance, err := osmosis.GetBalance(ctx, gaiaDstAddress, gaiaIbcDenom)
 	require.NoError(t, err)
 	require.Equal(t, amountToSend, gaiaIBCBalance)
 
-	//osmosisIBCBalance, err := gaia.GetBalance(ctx, osmosisDstAddress, osmosisIbcDenom)
-	//require.NoError(t, err)
-	//require.Equal(t, amountToSend, osmosisIBCBalance)
+	osmosisIBCBalance, err := gaia.GetBalance(ctx, osmosisDstAddress, osmosisIbcDenom)
+	require.NoError(t, err)
+	require.Equal(t, amountToSend, osmosisIBCBalance)
 
 	// Test grantee still has exact amount expected
 	gaiaGranteeIBCBalance, err := gaia.GetBalance(ctx, gaiaGranteeAddr, gaia.Config().Denom)
