@@ -849,11 +849,32 @@ func (pp *PathProcessor) assembleAndSendMessages(
 	return nil
 }
 
+type PathProcessorMessageResp struct {
+	Response         *provider.RelayerTxResponse
+	DestinationChain provider.ChainProvider
+	SuccessfulTx     bool
+	Error            error
+}
+
+var PathProcMessageCollector chan *PathProcessorMessageResp
+
 func (pp *PathProcessor) sendMessages(ctx context.Context, src, dst *pathEndRuntime, om *outgoingMessages, memo string) {
 	ctx, cancel := context.WithTimeout(ctx, messageSendTimeout)
 	defer cancel()
 
-	_, txSuccess, err := dst.chainProvider.SendMessages(ctx, om.msgs, pp.memo)
+	resp, txSuccess, err := dst.chainProvider.SendMessages(ctx, om.msgs, pp.memo)
+
+	//This does not need to be set, it is for testing only
+	if PathProcMessageCollector != nil {
+		msgResult := &PathProcessorMessageResp{
+			DestinationChain: dst.chainProvider,
+			Response:         resp,
+			SuccessfulTx:     txSuccess,
+			Error:            err,
+		}
+		PathProcMessageCollector <- msgResult
+	}
+
 	if err != nil {
 		if errors.Is(err, chantypes.ErrRedundantTx) {
 			pp.log.Debug("Packet(s) already handled by another relayer",

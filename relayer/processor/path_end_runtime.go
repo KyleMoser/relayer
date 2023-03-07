@@ -48,6 +48,10 @@ type pathEndRuntime struct {
 	metrics *PrometheusMetrics
 }
 
+func (r *pathEndRuntime) GetLatestBlock() provider.LatestBlock {
+	return r.latestBlock
+}
+
 func newPathEndRuntime(log *zap.Logger, pathEnd PathEnd, metrics *PrometheusMetrics) *pathEndRuntime {
 	return &pathEndRuntime{
 		log: log.With(
